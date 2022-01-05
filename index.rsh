@@ -18,14 +18,16 @@ const BidderProps = {
 };
 
 const OwnerInterface = {
+    showOwner: Fun([UInt, UInt, Address], Null),
+    informTimeout: Fun([], Null),
+    getAuctionProps: Fun([], AuctionProps)
+};
+const BuyerInterface = {
     ...BidderProps,
     showOwner: Fun([UInt, UInt, Address], Null),
     informTimeout: Fun([], Null),
-    getAuctionProps: Fun([], AuctionProps),
     noBuy: Fun([Bool], Null),
-    test: Fun([Bool,Bool], Null),
-};
-
+}
 const CreatorInterface = {
     ...OwnerInterface,
     getNftProps: Fun([], NftProps),
@@ -40,8 +42,9 @@ export const main = Reach.App(
     [
         Participant('Creator', CreatorInterface),
         ParticipantClass('Owner', OwnerInterface),
+        ParticipantClass('Buyer', BuyerInterface),
     ],
-    (Creator, Owner) => {
+    (Creator, Owner,Buyer) => {
 
         Creator.only(() => {
             const { nftId, artistId, createdAt, managerAddress } = declassify(interact.getNftProps());
@@ -58,7 +61,7 @@ export const main = Reach.App(
             });
             Owner.publish(nftPrice, timeout).when(amOwner).timeout(false);
             commit();
-            Owner.only(() => {
+            Buyer.only(() => {
                 const buy = declassify(interact.buyNft(nftPrice, nftId, artistId));
                 const buyNft = buy && this !== owner;
                 const bidder = this;
@@ -66,14 +69,14 @@ export const main = Reach.App(
                     interact.noBuy(buy);
                 }
             })
-            Owner.publish(buy,bidder);
+            Buyer.publish(buy,bidder);
             if(!buy){
                 commit();
                 exit();
             }
             commit();
-            Owner.publish(buyNft).pay(nftPrice).when(buyNft).timeout(timeout, () => {
-                each([Creator, Owner], () => {
+            Buyer.publish(buyNft).pay(nftPrice).when(buyNft).timeout(relativeTime(timeout), () => {
+                each([Creator, Owner,Buyer], () => {
                     interact.informTimeout();
                 })
                 Anybody.publish();
@@ -81,7 +84,7 @@ export const main = Reach.App(
                 continue;
             });
 
-            each([Creator,Owner], () => {
+            each([Creator,Owner,Buyer], () => {
                 interact.showOwner(nftId, nftPrice, bidder);
             });
 
