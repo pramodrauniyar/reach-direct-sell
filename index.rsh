@@ -43,14 +43,16 @@ export const main = Reach.App(
         Participant('Creator', CreatorInterface),
         ParticipantClass('Owner', OwnerInterface),
         ParticipantClass('Buyer', BuyerInterface),
+        View('NFT', {owner: Address })
     ],
-    (Creator, Owner,Buyer) => {
+    (Creator, Owner,Buyer,vNFT) => {
 
         Creator.only(() => {
             const { nftId, artistId, createdAt, managerAddress } = declassify(interact.getNftProps());
         });
         Creator.publish(nftId, artistId, createdAt, managerAddress);
         var owner = Creator;
+        { vNFT.owner.set(owner); };
         invariant(balance() == 0);
         while (true) {
             commit();

@@ -8,7 +8,7 @@ import { ask, yesno, done } from '@reach-sh/stdlib/ask.mjs';
     const getBalance = async () => fmt(await stdlib.balanceOf(acc));
 
     const whoIam = await ask(
-        `Who are you? 1. Creator 2. Owner 3. Buyer`,
+        `Who are you? 1. Creator 2. Owner 3. Buyer 4. External user`,
         JSON.parse
     );
     var who;
@@ -18,6 +18,8 @@ import { ask, yesno, done } from '@reach-sh/stdlib/ask.mjs';
         who = 'Owner'
     } else if (whoIam == 3) {
         who = 'Buyer'
+    }else if (whoIam == 4) {
+        who = 'External User'
     }
     console.log("You are "+ who);
 
@@ -55,7 +57,14 @@ import { ask, yesno, done } from '@reach-sh/stdlib/ask.mjs';
         console.log(` ${who} went from ${before} Algo to ${after} Algo`);
         console.log("|-----------------------------------------------------------------------------------------------|");
     }
+    async function externalViewer() {
+        console.log(`User sees who the owner is...`);
+        const owner = await ctc.v.NFT.owner();
 
+        if(owner && owner[1]) {
+            console.log(`...it is ${stdlib.formatAddress(owner[1])}`);
+        }
+    };
     const nftProps = {
         nftId: stdlib.randomUInt(), //Random NFT ID
         artistId: stdlib.randomUInt(), // Random Artist ID
@@ -63,6 +72,14 @@ import { ask, yesno, done } from '@reach-sh/stdlib/ask.mjs';
         managerAddress: acc.networkAccount.addr,
     };
 
+    const makeExternalUser = async (acc,who)=>{
+        const info = await ask(
+            `Please paste the contract information:`,
+            JSON.parse
+        );
+        ctc = acc.contract(backend,  info);
+        await externalViewer();
+    }
     const makeOwner = async (acc,ctcC, who) => {
         let interact = {};
         var ctc;
@@ -75,13 +92,18 @@ import { ask, yesno, done } from '@reach-sh/stdlib/ask.mjs';
             );
             ctc = acc.contract(backend,  info);
         }
-        interact.showOwner = (nftId, nftPrice, owner)=>{
-            if ( stdlib.addressEq(owner, acc.networkAccount.addr) ) {
-                console.log("|-----------------------------------------------------------------------------------------------|");
-                console.log(` New owner is (${who}) ${owner}\n NFT Price: ${fmt(nftPrice)} Algo\n NFT ID: #${nftId}`);
-                console.log("|-----------------------------------------------------------------------------------------------|");
+        interact.showOwner = async (nftId, nftPrice, owner)=>{
+            console.log("|-----------------------------------------------------------------------------------------------|");
+            console.log(` (${who}) sees new ${owner}\n NFT Price: ${fmt(nftPrice)} Algo\n NFT ID: #${nftId}`);
+            console.log("|-----------------------------------------------------------------------------------------------|");
+            await later();
 
-            };
+            // if ( stdlib.addressEq(owner, acc.networkAccount.addr) ) {
+            //     console.log("|-----------------------------------------------------------------------------------------------|");
+            //     console.log(` New owner is (${who}) ${owner}\n NFT Price: ${fmt(nftPrice)} Algo\n NFT ID: #${nftId}`);
+            //     console.log("|-----------------------------------------------------------------------------------------------|");
+            //     await later();
+            // }
         }
         interact.getAuctionProps = async ()=>{
             const price = await ask(
@@ -112,12 +134,21 @@ import { ask, yesno, done } from '@reach-sh/stdlib/ask.mjs';
         //console.log("Contract info is: "+info);
        // ctc = acc.contract(backend,  info);
         interact.showOwner =async (nftId, nftPrice, owner)=>{
-            if ( stdlib.addressEq(owner, acc.networkAccount.addr) ) {
-                console.log("|-----------------------------------------------------------------------------------------------|");
-                console.log(` New owner is (${who}) ${owner}\n NFT Price: ${fmt(nftPrice)} Algo\n NFT ID: #${nftId}`);
-                console.log("|-----------------------------------------------------------------------------------------------|");
-                await later();
-            };
+            console.log("|-----------------------------------------------------------------------------------------------|");
+            console.log(` (${who}) sees new owner is ${owner}\n NFT Price: ${fmt(nftPrice)} Algo\n NFT ID: #${nftId}`);
+            console.log("|-----------------------------------------------------------------------------------------------|");
+            await later();
+            // if ( stdlib.addressEq(owner, acc.networkAccount.addr) ) {
+            //     console.log("|-----------------------------------------------------------------------------------------------|");
+            //     console.log(` New owner is (${who}) ${owner}\n NFT Price: ${fmt(nftPrice)} Algo\n NFT ID: #${nftId}`);
+            //     console.log("|-----------------------------------------------------------------------------------------------|");
+            //     await later();
+            // }else{
+            //     console.log("|-----------------------------------------------------------------------------------------------|");
+            //     console.log(` Not same New owner is (${who}) ${owner}\n NFT Price: ${fmt(nftPrice)} Algo\n NFT ID: #${nftId}`);
+            //     console.log("|-----------------------------------------------------------------------------------------------|");
+            //     await later();
+            // }
         }
         interact.buyNft=async (nftPrice, nftId, artistId) => {
             console.log(` NFT ID: #${nftId}\n Artist ID: #${artistId}\n NFT Price: ${fmt(nftPrice)} Algo`);
@@ -127,8 +158,10 @@ import { ask, yesno, done } from '@reach-sh/stdlib/ask.mjs';
             );
             return buy;
         }
-        interact.informTimeout=async () => {
-            console.log(`Buyer didn't pay for NFT.`);
+        interact.informTimeout = async (nftId, nftPrice, owner) => {
+            console.log(`Timeout!.`);
+            await later();
+            // process.exit(0);
         }
         interact.noBuy = async (buy)=>{
             console.log(`buy=>`,buy);
@@ -147,17 +180,21 @@ import { ask, yesno, done } from '@reach-sh/stdlib/ask.mjs';
             return nftProps;
         }
         interact.showOwner = async (nftId, nftPrice, owner) => {
-                if ( stdlib.addressEq(owner, acc.networkAccount.addr) ) {
-                    console.log("|-----------------------------------------------------------------------------------------------|");
-                    console.log(` New owner is (${who}) ${owner}\n NFT Price: ${fmt(nftPrice)} Algo\n NFT ID: #${nftId}`);
-                    console.log("|-----------------------------------------------------------------------------------------------|");
-                    await later();
-                };
+            console.log("|-----------------------------------------------------------------------------------------------|");
+            console.log(`(${who}) sees new owner is ${owner}\n NFT Price: ${fmt(nftPrice)} Algo\n NFT ID: #${nftId}`);
+            console.log("|-----------------------------------------------------------------------------------------------|");
+            await later();
+                // if ( stdlib.addressEq(owner, acc.networkAccount.addr) ) {
+                //     console.log("|-----------------------------------------------------------------------------------------------|");
+                //     console.log(` New owner is (${who}) ${owner}\n NFT Price: ${fmt(nftPrice)} Algo\n NFT ID: #${nftId}`);
+                //     console.log("|-----------------------------------------------------------------------------------------------|");
+                //     await later();
+                // }
         }
         interact.informTimeout = async (nftId, nftPrice, owner) => {
             console.log(`Timeout!.`);
             await later();
-            process.exit(0);
+           // process.exit(0);
         }
     }
     var pr = [];
@@ -167,6 +204,8 @@ import { ask, yesno, done } from '@reach-sh/stdlib/ask.mjs';
 
     }else if(whoIam == 3){
         pr.push(makeBuyer(acc,ctc,'Buyer'));
+    }else if (whoIam == 4){
+       await makeExternalUser(acc,'External User');
     }
     await Promise.all(pr);
     console.log("Done!");
