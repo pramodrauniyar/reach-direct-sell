@@ -51,31 +51,24 @@ export const main = Reach.App(
             const { nftId, artistId, createdAt, managerAddress } = declassify(interact.getNftProps());
         });
         Creator.publish(nftId, artistId, createdAt, managerAddress);
+        Owner.only(() => {
+            const amOwner = true;
+            const { nftPrice, timeout } =declassify(interact.getAuctionProps());
+        });
+        commit();
+        Owner.publish(nftPrice, timeout).when(amOwner).timeout(false);
+        
         var owner = Creator;
         { vNFT.owner.set(owner); };
         invariant(balance() == 0);
         while (true) {
             commit();
-            Owner.only(() => {
-                const amOwner = this == owner;
-                const { nftPrice, timeout } =
-                    amOwner ? declassify(interact.getAuctionProps()) : emptyAuction;
-            });
-            Owner.publish(nftPrice, timeout).when(amOwner).timeout(false);
-            commit();
             Buyer.only(() => {
-                const buy = declassify(interact.buyNft(nftPrice, nftId, artistId));
+                const buy = declassify(interact.buyNft(nftPrice, nftId, artistId)); // return true or false
                 const buyNft = buy && this !== owner;
                 const bidder = this;
-                if(!buy){
-                    interact.noBuy(buy);
-                }
             })
             Buyer.publish(buy,bidder);
-            if(!buy){
-                commit();
-                exit();
-            }
             commit();
             Buyer.publish(buyNft).pay(nftPrice).when(buyNft).timeout(relativeTime(timeout), () => {
                 each([Creator, Owner,Buyer], () => {
@@ -85,18 +78,13 @@ export const main = Reach.App(
                 [owner] = [owner];
                 continue;
             });
-
             each([Creator,Owner,Buyer], () => {
                 interact.showOwner(nftId, nftPrice, bidder);
             });
-
-            transfer((owner == Creator ? nftPrice * 15 / 100 : nftPrice * 5 / 100)).to(managerAddress);
-            transfer((owner == Creator ? 0 : nftPrice / 10 )).to(Creator);
             transfer(balance()).to(owner);
-
-            [owner] = [bidder];
+            [owner] = [owner];
             continue;
         };
         commit();
-        // exit();
+
     });
